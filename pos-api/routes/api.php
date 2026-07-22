@@ -10,6 +10,15 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
 
 // Rutas Públicas
+Route::get('/', function () {
+    return response()->json([
+        'status' => 'online',
+        'message' => 'Minimarket POS API is running',
+        'version' => '1.0.0',
+        'laravel_version' => app()->version(),
+    ]);
+});
+
 Route::post('/login', [AuthController::class, 'login']);
 
 // Rutas Protegidas por Sanctum
