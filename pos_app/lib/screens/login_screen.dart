@@ -16,11 +16,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _apiUrlController = TextEditingController();
   bool _obscurePassword = true;
+  bool _deviceSupportsBiometrics = false;
 
   @override
   void initState() {
     super.initState();
     _apiUrlController.text = ApiService.baseUrl;
+    _checkBiometricsSupport();
   }
 
   @override
@@ -29,6 +31,38 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordController.dispose();
     _apiUrlController.dispose();
     super.dispose();
+  }
+
+  // Verificar el soporte biométrico en el dispositivo y lanzar huella si está habilitada
+  void _checkBiometricsSupport() async {
+    final authProvider = context.read<AuthProvider>();
+    final supported = await authProvider.checkBiometricsSupport();
+    
+    setState(() {
+      _deviceSupportsBiometrics = supported;
+    });
+
+    // Si el dispositivo soporta biometría y el usuario activó la preferencia
+    if (supported && authProvider.isBiometricEnabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _handleBiometricLogin();
+      });
+    }
+  }
+
+  // Disparar autenticación biométrica
+  void _handleBiometricLogin() async {
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.authenticateWithBiometrics();
+    
+    if (!success && authProvider.errorMessage != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authProvider.errorMessage!),
+          backgroundColor: AppTheme.error,
+        ),
+      );
+    }
   }
 
   // Cuadro de diálogo para configurar la URL del Servidor API
@@ -42,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'Ingresa la dirección base de tu API Laravel (ej: http://192.168.1.100:8000/api)',
+                'Ingresa la dirección base de tu API (ej: https://apiminimarket.macrocompany.net.pe/api)',
                 style: TextStyle(fontSize: 13, color: Colors.grey),
               ),
               const SizedBox(height: 12),
@@ -50,7 +84,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 controller: _apiUrlController,
                 decoration: const InputDecoration(
                   labelText: 'URL Base API',
-                  hintText: 'http://10.0.2.2:8000/api',
                 ),
               ),
             ],
@@ -137,18 +170,21 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Icono / Logo
+                      // Logo (Si tienes un archivo assets/images/logo.png, puedes usar Image.asset aquí)
+                      // Para evitar errores si no existe, usamos un icono moderno. Si el usuario registra el logo.png, 
+                      // puede reemplazar esto con: Image.asset('assets/images/logo.png', height: 100)
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           color: AppTheme.primary.withOpacity(0.1),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
-                          Icons.storefront_rounded,
-                          size: 72,
-                          color: AppTheme.primary,
-                        ),
+                        // child: const Icon(
+                        //   Icons.storefront_rounded,
+                        //   size: 72,
+                        //   color: AppTheme.primary,
+                        // ),
+                        child: Image.asset('assets/images/logo.png', height: 100),
                       ),
                       const SizedBox(height: 20),
                       Text(
@@ -159,12 +195,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                       ),
                       const Text(
-                        'Sistema Integral de Ventas y Facturación',
+                        'Sistema de Ventas y Facturación Electrónica',
                         style: TextStyle(color: Colors.grey, fontSize: 14),
                       ),
                       const SizedBox(height: 40),
 
-                      // Card de Formulario (Efecto Glassmorphic sutil)
+                      // Card de Formulario
                       Card(
                         elevation: isDark ? 8 : 2,
                         child: Padding(
@@ -213,14 +249,52 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 24),
+                              const SizedBox(height: 16),
+
+                              // Habilitar Huella Digital
+                              if (_deviceSupportsBiometrics) ...[
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Iniciar sesión con huella digital',
+                                      style: TextStyle(fontSize: 13, color: Colors.grey),
+                                    ),
+                                    Switch(
+                                      value: authProvider.isBiometricEnabled,
+                                      activeColor: AppTheme.accent,
+                                      onChanged: (val) {
+                                        authProvider.setBiometricEnabled(val);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                              ],
 
                               // Botón Ingresar
                               authProvider.isLoading
                                   ? const Center(child: CircularProgressIndicator())
-                                  : ElevatedButton(
-                                      onPressed: _handleLogin,
-                                      child: const Text('INGRESAR'),
+                                  : Column(
+                                      children: [
+                                        ElevatedButton(
+                                          onPressed: _handleLogin,
+                                          child: const Text('INGRESAR'),
+                                        ),
+                                        if (_deviceSupportsBiometrics && authProvider.isBiometricEnabled) ...[
+                                          const SizedBox(height: 12),
+                                          OutlinedButton.icon(
+                                            onPressed: _handleBiometricLogin,
+                                            icon: const Icon(Icons.fingerprint_rounded, size: 24),
+                                            label: const Text('INGRESAR CON HUELLA'),
+                                            style: OutlinedButton.styleFrom(
+                                              minimumSize: const Size(double.infinity, 50),
+                                              foregroundColor: AppTheme.accent,
+                                              side: const BorderSide(color: AppTheme.accent),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
                             ],
                           ),

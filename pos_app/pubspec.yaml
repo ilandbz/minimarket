@@ -37,6 +37,7 @@ dependencies:
   fl_chart: ^0.70.0
   intl: ^0.19.0
   shared_preferences: ^2.2.3
+  local_auth: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -45,10 +46,10 @@ dev_dependencies:
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
+  # package. See that file information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
-
+  flutter_launcher_icons: ^0.13.1
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -59,7 +60,8 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
-
+  assets:
+    - assets/images/
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg
@@ -90,3 +92,7 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+flutter_launcher_icons:
+  android: "launcher_icon"
+  image_path: "assets/images/logo.png"  # <-- Ruta de tu archivo PNG
+  min_sdk_android: 21 # compatible con el minSdk del proyecto
