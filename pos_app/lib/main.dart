@@ -6,6 +6,7 @@ import 'providers/auth_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/cart_provider.dart';
 import 'screens/login_screen.dart';
+import 'screens/lock_screen.dart';
 import 'screens/admin_dashboard_screen.dart';
 import 'screens/vendedor_dashboard_screen.dart';
 
@@ -50,19 +51,17 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
 
-    if (authProvider.isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
+    // 1. Si no está autenticado, va al Login con contraseña
     if (!authProvider.isAuthenticated) {
       return const LoginScreen();
     }
 
-    // Redirección por roles
+    // 2. Si está autenticado pero la app está bloqueada por huella
+    if (authProvider.isLocked) {
+      return const LockScreen();
+    }
+
+    // 3. Redirección por roles si está autenticado y desbloqueado
     if (authProvider.isAdmin) {
       return const AdminDashboardScreen();
     } else {

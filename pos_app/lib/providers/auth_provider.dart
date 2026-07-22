@@ -11,6 +11,7 @@ class AuthProvider extends ChangeNotifier {
   String? _errorMessage;
   final LocalAuthentication _localAuth = LocalAuthentication();
   bool _isBiometricEnabled = false;
+  bool _isLocked = false; // Estado de bloqueo de pantalla inicial
 
   UserModel? get user => _user;
   bool get isLoading => _isLoading;
@@ -18,6 +19,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _user != null;
   bool get isAdmin => _user?.role == 'admin';
   bool get isBiometricEnabled => _isBiometricEnabled;
+  bool get isLocked => _isLocked;
 
   // Cargar usuario persistido y preferencia biométrica
   Future<void> loadSavedUser() async {
@@ -28,8 +30,12 @@ class AuthProvider extends ChangeNotifier {
 
     if (userJson != null && token != null) {
       _user = UserModel.fromJson(jsonDecode(userJson));
-      notifyListeners();
+      // Si la huella está activada, iniciamos la app en estado bloqueado para exigir validación
+      _isLocked = _isBiometricEnabled;
+    } else {
+      _isLocked = false;
     }
+    notifyListeners();
   }
 
   // Verificar si el dispositivo soporta biometría
@@ -72,7 +78,8 @@ class AuthProvider extends ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', token);
         await prefs.setString('auth_user', jsonEncode(_user!.toJson()));
-
+        
+        _isLocked = false; // El login exitoso con contraseña no bloquea
         _isLoading = false;
         notifyListeners();
         return true;
@@ -90,14 +97,13 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // Autenticar e ingresar con Huella Digital
-  Future<bool> authenticateWithBiometrics() async {
+  // Desbloquear la app con Huella Digital
+  Future<bool> unlockWithBiometrics() async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      // 1. Verificar soporte físico
       final supported = await checkBiometricsSupport();
       if (!supported) {
         _errorMessage = 'Autenticación biométrica no disponible.';
@@ -106,9 +112,8 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
-      // 2. Ejecutar escaneo de huella
       final authenticated = await _localAuth.authenticate(
-        localizedReason: 'Escanea tu huella para iniciar sesión',
+        localizedReason: 'Escanea tu huella para desbloquear el sistema',
         options: const AuthenticationOptions(
           stickyAuth: true,
           biometricOnly: true,
@@ -116,29 +121,18 @@ class AuthProvider extends ChangeNotifier {
       );
 
       if (authenticated) {
-        final prefs = await SharedPreferences.getInstance();
-        final userJson = prefs.getString('auth_user');
-        final token = prefs.getString('auth_token');
-
-        if (userJson != null && token != null) {
-          _user = UserModel.fromJson(jsonDecode(userJson));
-          _isLoading = false;
-          notifyListeners();
-          return true;
-        } else {
-          _errorMessage = 'Primero debes iniciar sesión con contraseña una vez para registrar tus datos.';
-          _isLoading = false;
-          notifyListeners();
-          return false;
-        }
+        _isLocked = false;
+        _isLoading = false;
+        notifyListeners();
+        return true;
       } else {
-        _errorMessage = 'Autenticación biométrica fallida o cancelada.';
+        _errorMessage = 'Huella no reconocida o validación cancelada.';
         _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
-      _errorMessage = 'Error biométrico: $e';
+      _errorMessage = 'Error al desbloquear: $e';
       _isLoading = false;
       notifyListeners();
       return false;
@@ -152,6 +146,7 @@ class AuthProvider extends ChangeNotifier {
     } catch (_) {}
 
     _user = null;
+    _isLocked = false;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
     await prefs.remove('auth_user');

@@ -17,6 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _apiUrlController = TextEditingController();
   bool _obscurePassword = true;
   bool _deviceSupportsBiometrics = false;
+  bool _enableBiometricsOnSuccess = false; // Estado local del switch
 
   @override
   void initState() {
@@ -33,36 +34,15 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // Verificar el soporte biométrico en el dispositivo y lanzar huella si está habilitada
+  // Verificar si el dispositivo soporta biometría
   void _checkBiometricsSupport() async {
     final authProvider = context.read<AuthProvider>();
     final supported = await authProvider.checkBiometricsSupport();
     
     setState(() {
       _deviceSupportsBiometrics = supported;
+      _enableBiometricsOnSuccess = authProvider.isBiometricEnabled;
     });
-
-    // Si el dispositivo soporta biometría y el usuario activó la preferencia
-    if (supported && authProvider.isBiometricEnabled) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _handleBiometricLogin();
-      });
-    }
-  }
-
-  // Disparar autenticación biométrica
-  void _handleBiometricLogin() async {
-    final authProvider = context.read<AuthProvider>();
-    final success = await authProvider.authenticateWithBiometrics();
-    
-    if (!success && authProvider.errorMessage != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authProvider.errorMessage!),
-          backgroundColor: AppTheme.error,
-        ),
-      );
-    }
   }
 
   // Cuadro de diálogo para configurar la URL del Servidor API
@@ -126,7 +106,10 @@ class _LoginScreenState extends State<LoginScreen> {
     final authProvider = context.read<AuthProvider>();
     final success = await authProvider.login(email, password);
 
-    if (!success && mounted) {
+    if (success) {
+      // Guardar la preferencia de la huella en persistencia SOLO si el login con contraseña es exitoso.
+      await authProvider.setBiometricEnabled(_enableBiometricsOnSuccess);
+    } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(authProvider.errorMessage ?? 'Error de inicio de sesión.'),
@@ -170,21 +153,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Logo (Si tienes un archivo assets/images/logo.png, puedes usar Image.asset aquí)
-                      // Para evitar errores si no existe, usamos un icono moderno. Si el usuario registra el logo.png, 
-                      // puede reemplazar esto con: Image.asset('assets/images/logo.png', height: 100)
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           color: AppTheme.primary.withOpacity(0.1),
                           shape: BoxShape.circle,
                         ),
-                        // child: const Icon(
-                        //   Icons.storefront_rounded,
-                        //   size: 72,
-                        //   color: AppTheme.primary,
-                        // ),
-                        child: Image.asset('assets/images/logo.png', height: 100),
+                        child: const Icon(
+                          Icons.storefront_rounded,
+                          size: 72,
+                          color: AppTheme.primary,
+                        ),
                       ),
                       const SizedBox(height: 20),
                       Text(
@@ -251,7 +230,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               const SizedBox(height: 16),
 
-                              // Habilitar Huella Digital
+                              // Switch para Habilitar Huella Digital
                               if (_deviceSupportsBiometrics) ...[
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -261,40 +240,25 @@ class _LoginScreenState extends State<LoginScreen> {
                                       style: TextStyle(fontSize: 13, color: Colors.grey),
                                     ),
                                     Switch(
-                                      value: authProvider.isBiometricEnabled,
+                                      value: _enableBiometricsOnSuccess,
                                       activeColor: AppTheme.accent,
                                       onChanged: (val) {
-                                        authProvider.setBiometricEnabled(val);
+                                        setState(() {
+                                          _enableBiometricsOnSuccess = val;
+                                        });
                                       },
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 24),
                               ],
 
                               // Botón Ingresar
                               authProvider.isLoading
                                   ? const Center(child: CircularProgressIndicator())
-                                  : Column(
-                                      children: [
-                                        ElevatedButton(
-                                          onPressed: _handleLogin,
-                                          child: const Text('INGRESAR'),
-                                        ),
-                                        if (_deviceSupportsBiometrics && authProvider.isBiometricEnabled) ...[
-                                          const SizedBox(height: 12),
-                                          OutlinedButton.icon(
-                                            onPressed: _handleBiometricLogin,
-                                            icon: const Icon(Icons.fingerprint_rounded, size: 24),
-                                            label: const Text('INGRESAR CON HUELLA'),
-                                            style: OutlinedButton.styleFrom(
-                                              minimumSize: const Size(double.infinity, 50),
-                                              foregroundColor: AppTheme.accent,
-                                              side: const BorderSide(color: AppTheme.accent),
-                                            ),
-                                          ),
-                                        ],
-                                      ],
+                                  : ElevatedButton(
+                                      onPressed: _handleLogin,
+                                      child: const Text('INGRESAR'),
                                     ),
                             ],
                           ),
