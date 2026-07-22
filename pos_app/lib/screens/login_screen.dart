@@ -154,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Text(
                         'Minimarket POS',
                         style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                              fontWeight: FontWeight.extrabold,
+                              fontWeight: FontWeight.w800,
                               color: isDark ? Colors.white : AppTheme.primaryDark,
                             ),
                       ),

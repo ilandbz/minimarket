@@ -294,7 +294,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                             final list = _dashboardData['charts']['daily_sales'] as List;
                                             if (index >= 0 && index < list.length) {
                                               return SideTitleWidget(
-                                                axisSide: meta.axisSide,
+                                                meta: meta,
                                                 child: Text(
                                                   list[index]['day_name'],
                                                   style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),

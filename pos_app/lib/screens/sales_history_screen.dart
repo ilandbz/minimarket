@@ -426,9 +426,9 @@ class SaleDetailsModal extends StatelessWidget {
                       const TableRow(
                         children: [
                           Text('Descripción', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                          Text('Cant.', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, textAlign: TextAlign.center)),
-                          Text('Precio', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, textAlign: TextAlign.right)),
-                          Text('Subtotal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, textAlign: TextAlign.right)),
+                          Text('Cant.', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          Text('Precio', textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          Text('Subtotal', textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                         ],
                       ),
                       ...?(sale.items?.map((item) => TableRow(
