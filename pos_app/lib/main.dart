@@ -44,8 +44,37 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
+  AppLifecycleState? _lastState;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Si la app vuelve del segundo plano real (paused -> resumed), bloqueamos
+    if (state == AppLifecycleState.resumed && _lastState == AppLifecycleState.paused) {
+      final authProvider = context.read<AuthProvider>();
+      authProvider.lock();
+    }
+    _lastState = state;
+  }
 
   @override
   Widget build(BuildContext context) {

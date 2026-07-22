@@ -12,6 +12,7 @@ class AuthProvider extends ChangeNotifier {
   final LocalAuthentication _localAuth = LocalAuthentication();
   bool _isBiometricEnabled = false;
   bool _isLocked = false; // Estado de bloqueo de pantalla inicial
+  DateTime? _lastUnlockTime; // Evita bucle de bloqueo inmediato por diálogo nativo
 
   UserModel? get user => _user;
   bool get isLoading => _isLoading;
@@ -55,6 +56,19 @@ class AuthProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('biometric_enabled', enabled);
     notifyListeners();
+  }
+
+  // Bloquear la aplicación (ej: al enviarla a segundo plano)
+  void lock() {
+    if (isAuthenticated && _isBiometricEnabled && !_isLocked) {
+      // Evitar bloquear si acabamos de desbloquear hace menos de 2 segundos
+      if (_lastUnlockTime != null && 
+          DateTime.now().difference(_lastUnlockTime!).inSeconds < 2) {
+        return;
+      }
+      _isLocked = true;
+      notifyListeners();
+    }
   }
 
   // Iniciar Sesión con contraseña
@@ -122,6 +136,7 @@ class AuthProvider extends ChangeNotifier {
 
       if (authenticated) {
         _isLocked = false;
+        _lastUnlockTime = DateTime.now(); // Guardar momento exacto del desbloqueo
         _isLoading = false;
         notifyListeners();
         return true;
